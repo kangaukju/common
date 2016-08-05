@@ -8,61 +8,57 @@
 #ifndef CFILELOG_H_
 #define CFILELOG_H_
 
-#include <stdint.h>
-
-#include "ILog.h"
+#include <string.h>
+#include <time.h>
+#include "ILogger.h"
 
 namespace kinow {
 
-class CFileLog : public ILog {
-
+class CFileLog : public ILogger {
 public:
-	virtual void c(const char* msg, ...);
-	virtual void C(const char* msg, ...);
-	virtual void e(const char* msg, ...);
-	virtual void E(const char* msg, ...);
-	virtual void i(const char* msg, ...);
-	virtual void I(const char* msg, ...);
-	virtual void d(const char* msg, ...);
-	virtual void D(const char* msg, ...);
-	virtual void p(const char* msg, ...);
-	virtual void P(const char* msg, ...);
-	virtual void chex(uint8_t* hex, int len, const char* msg, ...);
-	virtual void ehex(uint8_t* hex, int len, const char* msg, ...);
-	virtual void ihex(uint8_t* hex, int len, const char* msg, ...);
-	virtual void dhex(uint8_t* hex, int len, const char* msg, ...);
-
-private:
-	typedef enum {
-		L_CRI = 1,
-		L_ERR = 2,
-		L_INF = 4,
-		L_DBG = 8,
-		L_ALL = (L_CRI|L_ERR|L_INF|L_DBG),
-	} L_LV;
-
-public:
-	CFileLog(const char* processname);
-	CFileLog(const char* processname, const char* logFilePath, L_LV lvl);
+	CFileLog(L_LV lvl, const char* dir, const char* filename) :
+		ILogger(lvl),
+		m_szFileDir(strdup(dir)),
+		m_szFileName(strdup(filename))
+	{}
+	CFileLog(L_LV lvl, const char* dir, const char* filename, ILogger* next) :
+		ILogger(lvl, next),
+		m_szFileDir(strdup(dir)),
+		m_szFileName(strdup(filename))
+	{}
 	virtual ~CFileLog();
 
-private:
-	const int KB = 1024;
-	const int MB = 1024 * KB;
-	const int GB = 1024 * MB;
-	const int MAX_LOGFILE_SIZE = 1 * GB;
+
+protected:
+	virtual void fireCri(const char* msg);
+	virtual void fireCRI(const char* msg);
+	virtual void fireErr(const char* msg);
+	virtual void fireERR(const char* msg);
+	virtual void fireInf(const char* msg);
+	virtual void fireINF(const char* msg);
+	virtual void fireDbg(const char* msg);
+	virtual void fireDBG(const char* msg);
+	virtual void fireCriHex(byte* hex, int len, const char* msg);
+	virtual void fireErrHex(byte* hex, int len, const char* msg);
+	virtual void fireInfHex(byte* hex, int len, const char* msg);
+	virtual void fireDbgHex(byte* hex, int len, const char* msg);
 
 private:
-	char* m_pLogPath;
-	char* m_pProcessName;
-	L_LV  m_lvl;
-	char* m_pFileName;
-	char* m_pErrFileName;
+	void fireLog(L_LV lvl, const char* msg);
+	void fireLogHex(L_LV lvl, byte* hex, int len, const char* msg);
+	bool makeDir(const char* dir);
+	void logrotate(const char* filePath, struct tm& stNow);
+	FILE* getCacheFile(struct tm& stNow);
 
 private:
-	void logWrite(L_LV lvl, const char* fmt, va_list ap, const char* color, bool bold);
-	void logWriteHex(L_LV lvl, uint8_t *hex, int len, const char* fmt, va_list ap);
-	void logRotate(const char* logfile, struct tm &t_now);
+	char* m_szFileDir;
+	char* m_szFileName;
+	FILE* m_cacheFp;
+	struct tm m_cacheTm;
+
+	const static int KB = 1024;
+	const static int MB = 1024 * KB;
+	const static int GB = 1024 * MB;
 };
 
 } /* namespace kinow */
