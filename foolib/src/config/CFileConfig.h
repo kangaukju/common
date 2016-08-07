@@ -10,6 +10,8 @@
 
 #include <map>
 #include <string>
+#include <vector>
+#include <string.h>
 #include "IConfig.h"
 
 namespace kinow {
@@ -17,9 +19,7 @@ namespace kinow {
 class CFileConfig : public IConfig {
 
 public:
-	CFileConfig(const char* filename) :
-		m_filename(strdup(filename))
-	{}
+	CFileConfig(const char* filename);
 	virtual ~CFileConfig();
 
 public:
@@ -48,6 +48,7 @@ private:
 
 private:
 	std::string parseValue(const char* value, int value_size, int line);
+	std::vector<std::string> sectionList();
 };
 
 } /* namespace kinow */

@@ -5,18 +5,36 @@
  *      Author: root
  */
 
+#include "CFileConfig.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include "CFileConfig.h"
 
 namespace kinow {
 
 static const char* INCLUDE_SYMBOL = "$include";
 
+CFileConfig::CFileConfig(const char* filename) :
+		m_filename(strdup(filename)) {
+//	load();
+}
+
 CFileConfig::~CFileConfig() {
 	if (m_filename) free(m_filename);
+}
+
+std::vector<std::string> CFileConfig::sectionList() {
+	std::map<std::string, inner_map_t>::iterator it;
+	std::vector<std::string> list;
+
+	for (	it = m_sectionConfig.begin();
+				it != m_sectionConfig.end();
+				++it) {
+		list.push_back(it->first);
+	}
+	return list;
 }
 
 bool CFileConfig::load() {
@@ -241,7 +259,7 @@ void CFileConfig::show() {
 	std::map<std::string, std::string>::iterator it1;
 	std::map<std::string, inner_map_t>::iterator it2;
 
-	fprintf(stdout, "[%s]\n", m_filename);
+	fprintf(stdout, "filename: %s\n", m_filename);
 	for (	it1 = m_generalConfig.begin();
 			it1 != m_generalConfig.end();
 			++it1) {
@@ -338,7 +356,7 @@ char* CFileConfig::leftTrim(char *origin, const char *delim) {
 } /* namespace kinow */
 
 
-#define TEST
+
 #ifdef TEST
 using namespace kinow;
 
@@ -347,6 +365,8 @@ int main(int argc, char** argv)
 	const char* file = argv[1];
 
 	IConfig *c = new CFileConfig(file);
+	c->load();
 	c->show();
+	delete c;
 }
 #endif

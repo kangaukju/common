@@ -9,13 +9,15 @@
 #define ICONFIG_H_
 
 #include <stdlib.h>
+#include <strings.h>
+#include <string.h>
 
 namespace kinow {
 
 class IConfig {
 
 public:
-	virtual void show();
+	virtual void show() = 0;
 	virtual bool load() = 0;
 	virtual bool load(const char* key) = 0;
 
