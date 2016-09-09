@@ -10,14 +10,25 @@
 
 #include <vector>
 #include <pcap.h>
+#include <stdint.h>
+#include "Error.h"
+
+struct socket_filter_st {
+	u_int count;
+	struct sock_filter* filters;
+};
 
 namespace kinow {
 
-class CaptureChain {
+class CaptureChain : public Error {
 public:
 	CaptureChain();
 	virtual ~CaptureChain();
 	void addFilter(const char* filter);
+
+	void debugSocketFilters(struct socket_filter_st* sf);
+	void debugCapture(const u_char *packet);
+	struct socket_filter_st* buildSocketFilters(const char* expression);
 private:
 };
 
