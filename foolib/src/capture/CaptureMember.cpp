@@ -22,7 +22,6 @@
 #include <sys/types.h>
 #include <sys/epoll.h>
 
-
 namespace kinow {
 
 
@@ -174,7 +173,12 @@ int main(int argc, char** argv) {
 
 	cm = new CaptureMember("CM");
 
-	main = new FilterMember("COMM", dev, NULL);
+	/**
+	 * TCPDUMP filter specifics
+	 * http://www.tcpdump.org/manpages/pcap-filter.7.txt
+	 */
+
+	main = new FilterMember("COMM", dev, "type mgt subtype beacon");
 	fm1 = new FilterMember("HTTP", dev, "port 80");
 	fm2 = new FilterMember("SSH ", dev, "port 22");
 	fm3 = new FilterMember("DNS ", dev, "port 53");

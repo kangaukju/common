@@ -38,8 +38,10 @@ struct sock_filter_st {
 void debugHex(const char* title, uint8_t *buf, int len) {
 	int i;
 	printf("%s (%d)\n", title, len);
-	for (i=0; i<len; i++) {
-		printf("%02x ", buf[i]);
+	for (i=1; i<=len; i++) {
+		printf("%02x ", buf[i-1]);
+		if (i%8 == 0)  printf(" ");
+		if (i%16 == 0) printf("\n");
 	}
 	printf("\n");
 }
@@ -52,7 +54,7 @@ void socketFilterFree(struct sock_filter_st *sf) {
 	}
 }
 
-struct sock_filter_st* socketFilterFactory(const char *filterExpression) {
+struct sock_filter_st* socketFilterFactory(const char *ifname, const char *filterExpression) {
 	FILE *fp;
 	char buf[256];
 	char tcpdumpCommand[256];
@@ -67,7 +69,9 @@ struct sock_filter_st* socketFilterFactory(const char *filterExpression) {
 	memset(sf, 0, sizeof(struct sock_filter_st));
 
 	snprintf(tcpdumpCommand, sizeof(tcpdumpCommand),
-			"/usr/sbin/tcpdump %s -ddd", filterExpression);
+			"/usr/sbin/tcpdump -i %s \"%s\" -ddd", ifname, filterExpression);
+
+	printf("%s\n", tcpdumpCommand);
 
 	fp = popen(tcpdumpCommand, "r");
 	if (fp == NULL) {
@@ -173,7 +177,7 @@ int FilterMember::createFilterSocket() {
 		goto out;
 	}
 	if (m_filterExpression) {
-		sf = socketFilterFactory(m_filterExpression);
+		sf = socketFilterFactory(m_ifname, m_filterExpression);
 		if (sf == NULL) {
 			failure("FilterMember[%s]: Failed to get filter code: %s", m_name, m_filterExpression);
 			goto out;
@@ -234,46 +238,133 @@ out:
 }
 
 bool parsingWirelessRadiotap(u_char* buf, size_t len) {
-	struct ieee80211_radiotap_header *radiotap_hdr;
-	struct wl_radiotap_header *wl_radiotap;
-	u_char channel;
+	struct ieee80211_radiotap_header *pRadioHdr;
+	uint8_t channel;
+	uint16_t channelFreq;
 	int8_t signal;
-	uint16_t rate;
+	int8_t noise;
+	uint8_t rate;
 	int frameLength;
+	int fcslength = 0;
+	bool debugFlag = false;
 
+	pRadioHdr = (struct ieee80211_radiotap_header *) buf;
 
-	radiotap_hdr = (struct ieee80211_radiotap_header *) buf;
-	wl_radiotap = (struct wl_radiotap_header *) buf;
-
-	if (len < (int) sizeof(*radiotap_hdr)) {
+	if (len < (int) sizeof(*pRadioHdr)) {
 		return false;
 	}
-	if (wl_radiotap->ieee_radiotap.it_version != 0) {
+	if (pRadioHdr->it_version != 0) {
 		fprintf(stderr, "ieee_radiotap.it_version is not 0\n");
 		return false;
 	}
-#if 0
-	else if (wl_radiotap->ieee_radiotap.it_present != 0x86f) {
-		fprintf(stderr, "ieee_radiotap.it_present is not 0x86f (0x%04x)\n", wl_radiotap->ieee_radiotap.it_present);
-		return false;
+
+	// test present flags of radiotap header
+	uint8_t* pOrg = (uint8_t*)pRadioHdr + sizeof(struct ieee80211_radiotap_header);
+	uint8_t* pRadioData = pOrg;
+	{
+		uint32_t presentFlag = pRadioHdr->it_present;
+
+		if (presentFlag & (1<<IEEE80211_RADIOTAP_TSFT)) {
+			if (debugFlag) printf("+TSFT ");
+			pRadioData += sizeof(uint64_t);
+		}
+		if (presentFlag & (1<<IEEE80211_RADIOTAP_FLAGS)) {
+			if (debugFlag) printf("+FLAGS ");
+			uint8_t flags = *pRadioData;
+			if (flags & (IEEE80211_RADIOTAP_F_BAD_FCS)) {
+				return false;
+			}
+			if (flags & (1<<IEEE80211_RADIOTAP_F_FCS)) {
+				fcslength = 4;
+			}
+			pRadioData += sizeof(uint8_t);
+		}
+		if (presentFlag & (1<<IEEE80211_RADIOTAP_RATE)) {
+			if (debugFlag) printf("+RATE ");
+			rate = (*pRadioData) / 2;
+			pRadioData += sizeof(uint8_t);
+		}
+		if (presentFlag & (1<<IEEE80211_RADIOTAP_CHANNEL)) {
+			if (debugFlag) printf("+CHANNEL ");
+			channelFreq = *(uint16_t*)pRadioData;
+			channel = WlanUtils::channelToFreq(channelFreq);
+			pRadioData += sizeof(uint16_t);
+
+			uint16_t channelFlags = *(uint16_t*)pRadioData;
+			pRadioData += sizeof(uint16_t);
+		}
+		if (presentFlag & (1<<IEEE80211_RADIOTAP_FHSS)) {
+			if (debugFlag) printf("+FHSS ");
+			pRadioData += sizeof(uint16_t);
+		}
+		if (presentFlag & (1<<IEEE80211_RADIOTAP_DBM_ANTSIGNAL)) {
+			if (debugFlag) printf("+SIGNAL ");
+			signal = *pRadioData;
+			pRadioData += sizeof(uint8_t);
+		}
+		if (presentFlag & (1<<IEEE80211_RADIOTAP_DBM_ANTNOISE)) {
+			if (debugFlag) printf("+NOISE ");
+			noise = *pRadioData;
+			pRadioData += sizeof(uint8_t);
+		}
+		if (presentFlag & (1<<IEEE80211_RADIOTAP_LOCK_QUALITY)) {
+			pRadioData += sizeof(uint16_t);
+		}
+		if (presentFlag & (1<<IEEE80211_RADIOTAP_TX_ATTENUATION)) {
+			pRadioData += sizeof(uint16_t);
+		}
+		if (presentFlag & (1<<IEEE80211_RADIOTAP_DB_TX_ATTENUATION)) {
+			pRadioData += sizeof(uint16_t);
+		}
+		if (presentFlag & (1<<IEEE80211_RADIOTAP_DBM_TX_POWER)) {
+			pRadioData += sizeof(uint8_t);
+		}
+		if (presentFlag & (1<<IEEE80211_RADIOTAP_ANTENNA)) {
+			if (debugFlag) printf("+ANTENNA ");
+			pRadioData += sizeof(uint8_t);
+		}
+		if (presentFlag & (1<<IEEE80211_RADIOTAP_DB_ANTSIGNAL)) {
+			pRadioData += sizeof(uint8_t);
+		}
+		if (presentFlag & (1<<IEEE80211_RADIOTAP_DB_ANTNOISE)) {
+			pRadioData += sizeof(uint8_t);
+		}
+		if (presentFlag & (1<<IEEE80211_RADIOTAP_RX_FLAGS)) {
+			if (debugFlag) printf("+RX_FLAGS ");
+			pRadioData += sizeof(uint16_t);
+		}
+		// TODO: Who one fill next flags.
+		// from CHANNEL_PLUS to VENDOR_NS_NEXT
+		if (debugFlag) printf("\n");
 	}
-	else if (wl_radiotap->flags & 0x40) {
-		fprintf(stderr, "CRC Check");
-		return false;
+
+	frameLength = len - pRadioHdr->it_len - fcslength;
+//	debugHex("packet", buf, frameLength);
+
+//	printf("ch: %d, rate: %d, signal: %d, noise: %d, framelen: %d, dist:%ld\n",
+//			channel, rate, signal, noise, frameLength, pRadioData-pOrg);
+
+	printf("ch: %d(%d), rate: %d, rssi: %d, len: %d",
+			channel, channelFreq, rate, signal, frameLength);
+
+
+	uint8_t *pData = pRadioData;
+	FRAME_CONTROL *fc = (FRAME_CONTROL *)pData;
+	{
+//		debugHex("FC", (uint8_t*)fc, sizeof(FRAME_CONTROL));
+		uint8_t version = fc->version;
+		uint8_t type = fc->type;
+		uint8_t subtype = fc->subtype;
+//		printf("ver:%d, type:%d, subtype:%d fromds:%d, tods:%d\n", version, type, subtype, fc->from_ds, fc->to_ds);
+		pData += sizeof(FRAME_CONTROL);
+
+		uint16_t duration = ntohs(*(uint16_t*)pData); pData += sizeof(uint16_t);
+		WlanUtils::showFrameType(type, subtype, false);
+		WlanUtils::showMacfmt(" Receiver", pData, false); pData += 6;
+		WlanUtils::showMacfmt(" Transmit", pData, false); pData += 6;
+		WlanUtils::showMacfmt(" Source", pData, false);   pData += 6;
 	}
-#endif
-
-	channel = WlanUtils::channelToFreq(wl_radiotap->channel_freq);
-	rate = wl_radiotap->rate / 2;
-	signal = wl_radiotap->signal;
-	frameLength = len - radiotap_hdr->it_len;
-
-//	debugHex("--", buf, sizeof(wl_radiotap_header));
-
-	printf("ch: %d(%02x), rate: %d, signal: %d, framelen: %d\n",
-			channel, wl_radiotap->channel_freq,
-			rate, signal, frameLength);
-
+	printf("\n");
 	return true;
 }
 

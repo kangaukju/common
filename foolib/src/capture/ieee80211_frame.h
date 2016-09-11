@@ -9,6 +9,7 @@
 #define IEEE80211_FRAME_H_
 
 #include <stdint.h>
+#include <endian.h>
 
 //-----------------------------------------
 //
@@ -116,45 +117,45 @@ enum ieee_80211_type {
 
 // Subtypes are a little odd because we re-use values depending on the type
 enum ieee_80211_subtype {
-    packet_sub_unknown = -1,
-    // Management subtypes
-    packet_sub_association_req = 0,
-    packet_sub_association_resp = 1,
-    packet_sub_reassociation_req = 2,
-    packet_sub_reassociation_resp = 3,
-    packet_sub_probe_req = 4,
-    packet_sub_probe_resp = 5,
-    packet_sub_beacon = 8,
-    packet_sub_atim = 9,
-    packet_sub_disassociation = 10,
-    packet_sub_authentication = 11,
-    packet_sub_deauthentication = 12,
-    packet_sub_action = 13, // 2014. kinow
-    // Phy subtypes
-    packet_sub_block_ack_req = 8,  // 2014. kinow.
-    packet_sub_block_ack = 9,  // 2014. kinow.
-	packet_sub_pspoll = 10,
-    packet_sub_rts = 11,
-    packet_sub_cts = 12,
-    packet_sub_ack = 13,
-    packet_sub_cf_end = 14,
-    packet_sub_cf_end_ack = 15,
-    // Data subtypes
-    packet_sub_data = 0,
-    packet_sub_data_cf_ack = 1,
-    packet_sub_data_cf_poll = 2,
-    packet_sub_data_cf_ack_poll = 3,
-    packet_sub_data_null = 4,
-    packet_sub_cf_ack = 5,
-    packet_sub_cf_ack_poll = 6,
-    packet_sub_data_qos_data = 8,
-    packet_sub_data_qos_data_cf_ack = 9,
-    packet_sub_data_qos_data_cf_poll = 10,
-    packet_sub_data_qos_data_cf_ack_poll = 11,
-    packet_sub_data_qos_null = 12,
-    packet_sub_data_qos_cf_poll_nod = 14,
-    packet_sub_data_qos_cf_ack_poll = 15
-};
+		packet_sub_unknown = -1,
+		// Management subtypes
+		packet_sub_association_req = 0,
+		packet_sub_association_resp = 1,
+		packet_sub_reassociation_req = 2,
+		packet_sub_reassociation_resp = 3,
+		packet_sub_probe_req = 4,
+		packet_sub_probe_resp = 5,
+		packet_sub_beacon = 8,
+		packet_sub_atim = 9,
+		packet_sub_disassociation = 10,
+		packet_sub_authentication = 11,
+		packet_sub_deauthentication = 12,
+		packet_sub_action = 13, // 2014. kinow
+		// Phy subtypes
+		packet_sub_block_ack_req = 8,  // 2014. kinow.
+		packet_sub_block_ack = 9,  // 2014. kinow.
+		packet_sub_pspoll = 10,
+		packet_sub_rts = 11,
+		packet_sub_cts = 12,
+		packet_sub_ack = 13,
+		packet_sub_cf_end = 14,
+		packet_sub_cf_end_ack = 15,
+		// Data subtypes
+		packet_sub_data = 0,
+		packet_sub_data_cf_ack = 1,
+		packet_sub_data_cf_poll = 2,
+		packet_sub_data_cf_ack_poll = 3,
+		packet_sub_data_null = 4,
+		packet_sub_cf_ack = 5,
+		packet_sub_cf_ack_poll = 6,
+		packet_sub_data_qos_data = 8,
+		packet_sub_data_qos_data_cf_ack = 9,
+		packet_sub_data_qos_data_cf_poll = 10,
+		packet_sub_data_qos_data_cf_ack_poll = 11,
+		packet_sub_data_qos_null = 12,
+		packet_sub_data_qos_cf_poll_nod = 14,
+		packet_sub_data_qos_cf_ack_poll = 15
+	};
 
 
 // distribution directions

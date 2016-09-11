@@ -9,13 +9,14 @@
 #define ERROR_H_
 
 #include <stdarg.h>
+#include <stdio.h>
 
 namespace kinow {
 
 class Error {
 public:
-	Error();
-	virtual ~Error();
+	Error() { }
+	virtual ~Error() { }
 
 public:
 	const char* cause() { return m_szBuf; }

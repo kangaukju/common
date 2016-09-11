@@ -147,20 +147,29 @@ struct ieee80211_radiotap_header {
  *	FCS from frame in network byte order.
  */
 enum ieee80211_radiotap_type {
-	IEEE80211_RADIOTAP_TSFT = 0,
-	IEEE80211_RADIOTAP_FLAGS = 1,
-	IEEE80211_RADIOTAP_RATE = 2,
-	IEEE80211_RADIOTAP_CHANNEL = 3,
-	IEEE80211_RADIOTAP_FHSS = 4,
-	IEEE80211_RADIOTAP_DBM_ANTSIGNAL = 5,
-	IEEE80211_RADIOTAP_DBM_ANTNOISE = 6,
-	IEEE80211_RADIOTAP_LOCK_QUALITY = 7,
-	IEEE80211_RADIOTAP_TX_ATTENUATION = 8,
-	IEEE80211_RADIOTAP_DB_TX_ATTENUATION = 9,
-	IEEE80211_RADIOTAP_DBM_TX_POWER = 10,
-	IEEE80211_RADIOTAP_ANTENNA = 11,
-	IEEE80211_RADIOTAP_DB_ANTSIGNAL = 12,
-	IEEE80211_RADIOTAP_DB_ANTNOISE = 13,
+	IEEE80211_RADIOTAP_TSFT = 0, // 8byte (u_int64_t)
+	IEEE80211_RADIOTAP_FLAGS = 1, // 1byte (u_int8_t)
+	IEEE80211_RADIOTAP_RATE = 2, // 1byte (u_int8_t)
+	IEEE80211_RADIOTAP_CHANNEL = 3, // 2byte * 2 (u_int16_t) // with channel flag
+	IEEE80211_RADIOTAP_FHSS = 4, // 2byte (u_int16_t)
+	IEEE80211_RADIOTAP_DBM_ANTSIGNAL = 5, // 1byte (int8_t)
+	IEEE80211_RADIOTAP_DBM_ANTNOISE = 6, // 1byte (int8_t)
+	IEEE80211_RADIOTAP_LOCK_QUALITY = 7, // 2byte (u_int16_t)
+	IEEE80211_RADIOTAP_TX_ATTENUATION = 8,  // 2byte (u_int16_t)
+	IEEE80211_RADIOTAP_DB_TX_ATTENUATION = 9, // 2byte (u_int16_t)
+	IEEE80211_RADIOTAP_DBM_TX_POWER = 10, // 1byte (int8_t)
+	IEEE80211_RADIOTAP_ANTENNA = 11, // 1byte (u_int8_t)
+	IEEE80211_RADIOTAP_DB_ANTSIGNAL = 12, // 1byte (u_int8_t)
+	IEEE80211_RADIOTAP_DB_ANTNOISE = 13, // 1byte (u_int8_t)
+	IEEE80211_RADIOTAP_RX_FLAGS = 14, // 2byte (u_int16_t)
+	/* empty 15 ~ 17 */
+	IEEE80211_RADIOTAP_CHANNEL_PLUS = 18,
+	IEEE80211_RADIOTAP_MCS_INFORMATION = 19,
+	IEEE80211_RADIOTAP_A_MPDU_STATUS = 20,
+	IEEE80211_RADIOTAP_VHT_INFORMATION = 21,
+	/* reserved 22 ~ 28 */
+	IEEE80211_RADIOTAP_RADIOTAP_NS_NEXT = 29,
+	IEEE80211_RADIOTAP_VENDOR_NS_NEXT = 30,
 	IEEE80211_RADIOTAP_EXT = 31,
 };
 
@@ -193,6 +202,8 @@ enum ieee80211_radiotap_type {
 						 * 802.11 header and payload
 						 * (to 32-bit boundary)
 						 */
+#define	IEEE80211_RADIOTAP_F_BAD_FCS	0x40
+#define	IEEE80211_RADIOTAP_F_SHORT_GI	0x80
 
 /* Ugly macro to convert literal channel numbers into their mhz equivalents
  * There are certianly some conditions that will break this (like feeding it '30')
@@ -203,9 +214,9 @@ enum ieee80211_radiotap_type {
 	((x) + 1000) * 5)
 
 
+/*
 struct wl_radiotap_header {
 	struct ieee80211_radiotap_header    ieee_radiotap;
-#if 0
 	uint32_t       tsft_h;
 	uint32_t       tsft_l;
 	uint8_t        flags;
@@ -215,16 +226,7 @@ struct wl_radiotap_header {
 	uint8_t        signal;
 	uint8_t        noise;
 	uint8_t        antenna;
-#else
-	uint8_t flags;
-	uint8_t rate;
-	uint16_t channel_freq;
-	uint16_t channel_flags;
-	int8_t signal;
-	uint8_t antenna;
-	uint16_t rx_flags;
-#endif
 } __attribute__((__packed__));
-
+*/
 
 #endif /* IEEE80211_RADIOTAP_H_ */
