@@ -178,14 +178,14 @@ int main(int argc, char** argv) {
 	 * http://www.tcpdump.org/manpages/pcap-filter.7.txt
 	 */
 
-	main = new FilterMember("COMM", dev, "type mgt subtype beacon");
-	fm1 = new FilterMember("HTTP", dev, "port 80");
+	main = new FilterMember("beacon", dev, "type mgt subtype beacon");
+	fm1 = new FilterMember("12:e3:c7:07:3b:01", dev, "ether src 12:e3:c7:07:3b:01");
 	fm2 = new FilterMember("SSH ", dev, "port 22");
 	fm3 = new FilterMember("DNS ", dev, "port 53");
 
 	cm->addFilterMember(main);
-	/*
 	cm->addFilterMember(fm1);
+	/*
 	cm->addFilterMember(fm2);
 	cm->addFilterMember(fm3);
 	*/

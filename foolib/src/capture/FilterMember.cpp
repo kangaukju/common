@@ -237,7 +237,7 @@ out:
 	return sock;
 }
 
-bool parsingWirelessRadiotap(u_char* buf, size_t len) {
+bool parsingWirelessRadiotap(u_char* buf, size_t len, FilterMember *fm) {
 	struct ieee80211_radiotap_header *pRadioHdr;
 	uint8_t channel;
 	uint16_t channelFreq;
@@ -344,6 +344,7 @@ bool parsingWirelessRadiotap(u_char* buf, size_t len) {
 //	printf("ch: %d, rate: %d, signal: %d, noise: %d, framelen: %d, dist:%ld\n",
 //			channel, rate, signal, noise, frameLength, pRadioData-pOrg);
 
+	printf("{%s} ", fm->getName());
 	printf("ch: %d(%d), rate: %d, rssi: %d, len: %d",
 			channel, channelFreq, rate, signal, frameLength);
 
@@ -402,7 +403,7 @@ void FilterMember::filterHandler(u_char* buf, size_t len) {
 	static int dlt = WlanUtils::getDLT(m_ifname);
 	switch (dlt) {
 	case DLT_RADIOTAP:
-		parsingWirelessRadiotap(buf, len);
+		parsingWirelessRadiotap(buf, len, this);
 		break;
 	default:
 		fprintf(stderr, "unsupport DLT: %d\n", dlt);
