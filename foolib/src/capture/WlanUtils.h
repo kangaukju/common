@@ -76,7 +76,7 @@ private:
 
 public:
 	static int getDLT(const char* ifname);
-	static int channelToFreq(int in_chan);
+	static int FreqTochannel(int in_chan);
 	static void showMacfmt(const char* title, const uint8_t* mac, bool newline);
 	static void showMacfmt64(const char* title, const uint64_t *mac64, bool newline);
 	static void showFrameType(uint8_t type, uint8_t subtype, bool newline);

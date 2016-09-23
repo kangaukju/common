@@ -287,7 +287,7 @@ bool parsingWirelessRadiotap(u_char* buf, size_t len, FilterMember *fm) {
 		if (presentFlag & (1<<IEEE80211_RADIOTAP_CHANNEL)) {
 			if (debugFlag) printf("+CHANNEL ");
 			channelFreq = *(uint16_t*)pRadioData;
-			channel = WlanUtils::channelToFreq(channelFreq);
+			channel = WlanUtils::FreqTochannel(channelFreq);
 			pRadioData += sizeof(uint16_t);
 
 			uint16_t channelFlags = *(uint16_t*)pRadioData;

@@ -137,7 +137,7 @@ int WlanUtils::getDLT(const char* ifname) {
 	return dlt;
 }
 
-int WlanUtils::channelToFreq(int freq) {
+int WlanUtils::FreqTochannel(int freq) {
 #if 0
 	int x = 0;
 	// 80211b frequencies to channels
