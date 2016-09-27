@@ -1,5 +1,5 @@
 /*
- * Daemon.h
+ * IDaemon.h
  *
  *  Created on: 2016. 9. 23.
  *      Author: root
@@ -13,10 +13,10 @@
 
 namespace kinow {
 
-class Daemon : public Error {
+class IDaemon : public Error {
 public:
-	Daemon(const char *name, int argc, char **argv);
-	virtual ~Daemon();
+	IDaemon(const char *name, int argc, char **argv);
+	virtual ~IDaemon();
 	void daemonize(bool daemonize) { m_daemonize = daemonize; }
 	/**
 	 * execute daemon process

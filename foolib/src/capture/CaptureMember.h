@@ -8,7 +8,8 @@
 #ifndef CAPTURE_CAPTUREMEMBER_H_
 #define CAPTURE_CAPTUREMEMBER_H_
 
-#include "FilterMember.h"
+#include <IFilterMember.h>
+
 #include "Error.h"
 #include <vector>
 #include <string>
@@ -19,9 +20,9 @@ using namespace std;
 
 class CaptureMember : public Error {
 public:
-	void addFilterMember(FilterMember *fm);
-	bool capture();
 	CaptureMember(const char* name);
+	void addFilterMember(IFilterMember *fm);
+	bool capture();
 	virtual ~CaptureMember();
 	const char* toString();
 
@@ -30,7 +31,7 @@ private:
 	bool initialize();
 
 private:
-	vector<FilterMember*> m_filterMembers;
+	vector<IFilterMember*> m_filterMembers;
 	char *m_name;
 };
 

@@ -5,12 +5,12 @@
  *      Author: root
  */
 
-#include "WlanUtils.h"
 #include <sys/socket.h>
 #include <linux/types.h>
 #include <stdint.h>
 #include <linux/if_arp.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <string.h>
@@ -22,9 +22,11 @@
 #include <linux/if.h>           /* struct ifr */
 #include <linux/if_packet.h>    /* struct sockaddr_ll */
 #include <linux/wireless.h>     /* srtuct iwreq */
+
 #include "ieee80211_prism.h"
 #include "ieee80211_radiotap.h"
 #include "ieee80211_frame.h"
+#include "WlanUtils.h"
 
 namespace kinow {
 
@@ -225,6 +227,176 @@ void WlanUtils::showFrameType(uint8_t type, uint8_t subtype, bool newline) {
 		stype = ssubtype = "DATA"; break;
 	}
 	printf("[%s:%s]%s", stype, ssubtype, newline?"\n":"");
+}
+
+bool WlanUtils::setSockOptBroadcat(int sock) {
+	static int on = 1;
+	return !setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on));
+}
+
+bool WlanUtils::setPromiscMode(int sock, const char* ifname) {
+	struct ifreq ifr;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name)-1);
+
+	if (ioctl(sock, SIOCGIFFLAGS, &ifr) == -1) {
+		return false;
+	}
+	ifr.ifr_flags |= IFF_PROMISC;
+	if (ioctl(sock, SIOCSIFFLAGS, &ifr) == -1) {
+		return false;
+	}
+	return true;
+}
+
+bool WlanUtils::setSockBind(int sock, int proto, const char *ifname, struct sockaddr_ll *rsll) {
+	struct ifreq ifr;
+	struct sockaddr_ll sll;
+
+	memset(&ifr, 0, sizeof(ifr));
+
+	strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name)-1);
+	if (ioctl(sock, SIOCGIFFLAGS, &ifr) == -1) {
+		return false;
+	}
+
+	if(ioctl(sock, SIOCGIFINDEX, &ifr) == -1) {
+		return false;
+	}
+	// bind socket
+    bzero(&sll, sizeof(sll));
+    sll.sll_family = AF_PACKET;
+    sll.sll_ifindex = ifr.ifr_ifindex;
+    sll.sll_protocol = htons(proto);
+
+    if(bind(sock, (struct sockaddr*)&sll, sizeof(sll)) == -1) {
+        return false;
+    }
+
+    memcpy(rsll, &sll, sizeof(struct sockaddr_ll));
+
+    return true;
+}
+
+bool WlanUtils::setSockOptAddressReuse(int sock) {
+	static int on = 1;
+	return !setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+}
+
+bool WlanUtils::setSockOptBindDevice(int sock, const char *ifname) {
+	return !setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, ifname, IFNAMSIZ-1);
+}
+
+bool WlanUtils::setSockAttachFilter(int sock, struct sock_fprog *bpf) {
+	return !setsockopt(sock, SOL_SOCKET, SO_ATTACH_FILTER, bpf, sizeof(*bpf));
+}
+
+int WlanUtils::createSocket(int type, int proto) {
+	return socket(PF_PACKET, type, htons(proto));
+}
+
+void WlanUtils::socketFilterFree(struct sock_filter_st *sf) {
+	if (sf) {
+		if (sf->filters) {
+			free(sf->filters);
+		}
+	}
+}
+
+struct sock_filter_st*
+WlanUtils::socketFilterFactory(const char *ifname, const char *filterExpression) {
+	FILE *fp;
+	char buf[256];
+	char tcpdumpCommand[256];
+	char *tok;
+	char *last;
+	int filterCount = 0;
+	struct sock_filter *filters;
+	int line = 0;
+	struct sock_filter_st* sf;
+
+	sf = (struct sock_filter_st*)malloc(sizeof(struct sock_filter_st));
+	memset(sf, 0, sizeof(struct sock_filter_st));
+
+	snprintf(tcpdumpCommand, sizeof(tcpdumpCommand),
+			"/usr/sbin/tcpdump -i %s \"%s\" -ddd", ifname, filterExpression);
+
+	printf("%s\n", tcpdumpCommand);
+
+	fp = popen(tcpdumpCommand, "r");
+	if (fp == NULL) {
+		free(sf);
+		return NULL;
+	}
+
+	if (fgets(buf, sizeof(buf), fp)) {
+		// BPF filter count
+		sscanf(buf, "%d", &filterCount);
+
+		if (filterCount == 0) {
+			free(sf);
+			pclose(fp);
+			return NULL;
+		}
+
+		filters = (struct sock_filter*)malloc(sizeof(struct sock_filter) * filterCount);
+
+		while (fgets(buf, sizeof(buf), fp) != NULL && (line < filterCount)) {
+			// BPF Filter block code
+			// Actual filter code
+			if ((tok = strtok_r(buf, " ", &last))) {
+				sscanf(tok, "%hd", (__u16*)&filters[line].code);
+			}
+			// Jump true
+			if ((tok = strtok_r(NULL, " ", &last))) {
+				sscanf(tok, "%u", (__u32*)&filters[line].jt);
+			}
+			// Jump false
+			if ((tok = strtok_r(NULL, " ", &last))) {
+				sscanf(tok, "%u", (__u32*)&filters[line].jf);
+			}
+			// Generic multiuse field
+			if ((tok = strtok_r(NULL, " ", &last))) {
+				sscanf(tok, "%d", (__u32*)&filters[line].k);
+			}
+			line++;
+		}
+		sf->count = filterCount;
+		sf->filters = filters;
+		pclose(fp);
+		return sf;
+	}
+
+	free(sf);
+	pclose(fp);
+	return NULL;
+}
+
+void WlanUtils::socketFilterDebug(struct sock_filter_st* sf) {
+	int i = 0;
+	int count = 0;
+
+	if (sf) {
+		count = sf->count;
+		fprintf(stdout, "%d\n", count);
+		for (i=0; i<count; i++) {
+			fprintf(stdout, "{ 0x%x, %d, %d, 0x%08x },\n",
+					sf->filters[i].code, sf->filters[i].jt,
+					sf->filters[i].jf, sf->filters[i].k);
+		}
+	}
+}
+
+void WlanUtils::debugHexPacket(const char* title, uint8_t *buf, int len) {
+	int i;
+	printf("%s (%d)\n", title, len);
+	for (i=1; i<=len; i++) {
+		printf("%02x ", buf[i-1]);
+		if (i%8 == 0)  printf(" ");
+		if (i%16 == 0) printf("\n");
+	}
+	printf("\n");
 }
 
 } /* namespace kinow */

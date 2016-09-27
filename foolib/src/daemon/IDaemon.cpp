@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <IDaemon.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,12 +19,12 @@
 #include <sys/stat.h>
 #include <sys/resource.h>
 
-#include "Daemon.h"
 #include "IOUtils.h"
+#include "IDaemon.h"
 
 namespace kinow {
 
-Daemon::Daemon(const char *name, int argc, char **argv) {
+IDaemon::IDaemon(const char *name, int argc, char **argv) {
 	int pnameLen = 0;
 	m_name = strdup(name);
 	m_argc = argc;
@@ -41,14 +42,14 @@ Daemon::Daemon(const char *name, int argc, char **argv) {
 	}
 }
 
-Daemon::~Daemon() {
+IDaemon::~IDaemon() {
 	if (m_name) {
 		free(m_name);
 	}
 	m_pid = 0;
 }
 
-bool Daemon::run() {
+bool IDaemon::run() {
 	bool ok = false;
 	m_uptime = time(NULL);
 
@@ -100,7 +101,7 @@ bool Daemon::run() {
 	return ok;
 }
 
-pid_t Daemon::setDaemon()
+pid_t IDaemon::setDaemon()
 {
 	pid_t pid = 0;
 
@@ -127,10 +128,10 @@ pid_t Daemon::setDaemon()
 }
 
 
-bool Daemon::isRunning() {
+bool IDaemon::isRunning() {
 	pid_t pid = 0;
 
-	pid = getPIDFromPIDFile("/var/run", m_name);
+	pid = extractPID("/var/run", m_name);
 	if (pid == -1) {
 		return false;
 	}
@@ -148,24 +149,24 @@ bool Daemon::isRunning() {
  * get pid number
  * pid file: pidpath/pname.pid
  */
-pid_t Daemon::extractPID(const char *pidPath, const char* pname) {
+pid_t IDaemon::extractPID(const char *pidPath, const char* pname) {
 	char pidfile[256] = {0, };
 	char pidstr[256] = {0, };
 
 	snprintf(pidfile, sizeof(pidfile), "%s/%s.pid", pidPath, pname);
 
-	if (IOUtils.extractContent(pidPath, pidstr, sizeof(pidstr)) == -1) {
+	if (IOUtils::extractContent(pidPath, pidstr, sizeof(pidstr)) == -1) {
 		return -1;
 	}
 	return (pid_t)strtoul(pidstr, NULL, 10);
 }
 
-bool Daemon::existPIDProc(pid_t pid) {
+bool IDaemon::existPIDProc(pid_t pid) {
 	char cmd[256] = {0, };
 	char procfile[256] = {0, };
 
 	snprintf(procfile, sizeof(procfile), "/proc/%d/cmdline", pid);
-	if (IOUtils.extractContent(procfile, cmd, sizeof(cmd)) == -1) {
+	if (IOUtils::extractContent(procfile, cmd, sizeof(cmd)) == -1) {
 		return false;
 	}
 
@@ -173,14 +174,14 @@ bool Daemon::existPIDProc(pid_t pid) {
 	return !(strncmp(cmd, m_name, strlen(m_name)));
 }
 
-bool Daemon::recordPID(const char *pidPath, const char* pname, pid_t pid) {
+bool IDaemon::recordPID(const char *pidPath, const char* pname, pid_t pid) {
 	char pidfile[256] = {0, };
 	char pidstr[256] = {0, };
 
 	snprintf(pidfile, sizeof(pidfile), "%s/%s.pid", pidPath, pname);
 	snprintf(pidstr, sizeof(pidstr), "%d", pid);
 
-	if (IOUtils.recordContent(pidfile, pidstr) == -1) {
+	if (IOUtils::recordContent(pidfile, pidstr) == -1) {
 		return false;
 	}
 	return true;

@@ -9,6 +9,9 @@
 #define CAPTURE_WLANUTILS_H_
 
 #include <stdint.h>
+#include <string.h>
+#include <linux/if_packet.h>    /* struct sockaddr_ll */
+#include <linux/filter.h>
 
 namespace kinow {
 
@@ -62,11 +65,42 @@ namespace kinow {
 		((uint8_t*)(&x))[0]
 #endif
 
+#ifndef _IS_ZERO_MAC_
+ #define _IS_ZERO_MAC_(x) (( \
+		((uint8_t*)(x))[0] | \
+		((uint8_t*)(x))[1] | \
+		((uint8_t*)(x))[2] | \
+		((uint8_t*)(x))[3] | \
+		((uint8_t*)(x))[4] | \
+		((uint8_t*)(x))[5]) == 0)
+#endif
+
+#ifndef _IS_BCAST_MAC_
+ #define _IS_BCAST_MAC_(x) (( \
+		((uint8_t*)(x))[0] & \
+		((uint8_t*)(x))[1] & \
+		((uint8_t*)(x))[2] & \
+		((uint8_t*)(x))[3] & \
+		((uint8_t*)(x))[4] & \
+		((uint8_t*)(x))[5]) == 0xFF)
+#endif
+
+#define _MAC_COPY_(t, s) \
+    memcpy((t), (s), 6)
+
+#define _MAC_CMP_(t, s) \
+    ((memcmp((t), (s), 6) == 0) ? 1 : 0)
+
 enum wifi_dlt {
 	DLT_UNKOWN              = 0,
 	DLT_PRISM               = 1,
 	DLT_RADIOTAP            = 2,
 	DLT_RADIO               = 3,
+};
+
+struct sock_filter_st {
+	uint32_t count;
+	struct sock_filter* filters;
 };
 
 class WlanUtils {
@@ -80,6 +114,17 @@ public:
 	static void showMacfmt(const char* title, const uint8_t* mac, bool newline);
 	static void showMacfmt64(const char* title, const uint64_t *mac64, bool newline);
 	static void showFrameType(uint8_t type, uint8_t subtype, bool newline);
+	static int createSocket(int type, int proto);
+	static bool setSockOptAddressReuse(int sock);
+	static bool setSockOptBindDevice(int sock, const char *ifname);
+	static bool setSockBind(int sock, int proto, const char *ifname, struct sockaddr_ll *rsll);
+	static bool setSockAttachFilter(int sock, struct sock_fprog *bpf);
+	static bool setPromiscMode(int sock, const char* ifname);
+	static bool setSockOptBroadcat(int sock);
+	static void debugHexPacket(const char* title, uint8_t *buf, int len);
+	static void socketFilterFree(struct sock_filter_st *sf);
+	static struct sock_filter_st* socketFilterFactory(const char *ifname, const char *filterExpression);
+	static void socketFilterDebug(struct sock_filter_st* sf);
 };
 
 } /* namespace kinow */

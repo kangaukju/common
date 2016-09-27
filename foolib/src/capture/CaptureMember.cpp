@@ -5,8 +5,6 @@
  *      Author: root
  */
 
-#include "CaptureMember.h"
-#include "WlanUtils.h"
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -21,6 +19,10 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/epoll.h>
+
+#include "WlanFilterMember.h"
+#include "CaptureMember.h"
+#include "WlanUtils.h"
 
 namespace kinow {
 
@@ -47,7 +49,7 @@ CaptureMember::CaptureMember(const char* name) {
 
 CaptureMember::~CaptureMember() {
 	int i;
-	FilterMember *fm;
+	IFilterMember *fm;
 
 	for (i=0; i<m_filterMembers.size(); i++) {
 		fm = m_filterMembers[i];
@@ -56,7 +58,9 @@ CaptureMember::~CaptureMember() {
 	if (m_name) free(m_name);
 }
 
-void CaptureMember::addFilterMember(FilterMember *fm) {
+void CaptureMember::addFilterMember(IFilterMember *fm) {
+	if (!fm) return;
+
 	m_filterMembers.push_back(fm);
 	if (!fm->initialize()) {
 		fprintf(stderr, "CaptureMember[%s]: Failed to FilterMember - %s\n", m_name, fm->cause());
@@ -77,8 +81,8 @@ bool CaptureMember::CaptureMember::capture() {
 	static int timeout = 100; // 100ms
 	int max_event_num = 0;
 	struct epoll_event *evlist = NULL;
-	FilterMember **fmArray = NULL;
-	FilterMember *fm = NULL;
+	IFilterMember **fmArray = NULL;
+	IFilterMember *fm = NULL;
 	int maxSockNum = 0;
 	int bytes;
 	static int mtu = 1500;
@@ -93,7 +97,7 @@ bool CaptureMember::CaptureMember::capture() {
 	}
 
 	maxSockNum = getFilterMemberMaxFD() + 1;
-	fmArray = (FilterMember**)malloc(sizeof(FilterMember*) * maxSockNum);
+	fmArray = (IFilterMember**)malloc(sizeof(IFilterMember*) * maxSockNum);
 
 	for (i=0; i<m_filterMembers.size(); i++) {
 		fm = m_filterMembers[i];
@@ -149,7 +153,7 @@ out:
 int CaptureMember::getFilterMemberMaxFD() {
 	int i;
 	int max = 0;
-	FilterMember *fm;
+	IFilterMember *fm;
 
 	for (i=0; i<m_filterMembers.size(); i++) {
 		fm = m_filterMembers[i];
@@ -167,9 +171,9 @@ using namespace kinow;
 int main(int argc, char** argv) {
 	const char *dev = argv[1];
 
-	CaptureMember *cm;
-	FilterMember *fm1, *fm2, *fm3;
-	FilterMember *main;
+	CaptureMember *cm = NULL;
+	IFilterMember *fm1 = NULL, *fm2 = NULL, *fm3 = NULL;
+	IFilterMember *main = NULL;
 
 	cm = new CaptureMember("CM");
 
@@ -178,17 +182,15 @@ int main(int argc, char** argv) {
 	 * http://www.tcpdump.org/manpages/pcap-filter.7.txt
 	 */
 
-	main = new FilterMember("beacon", dev, "type mgt subtype beacon");
-	fm1 = new FilterMember("12:e3:c7:07:3b:01", dev, "ether src 12:e3:c7:07:3b:01");
-	fm2 = new FilterMember("SSH ", dev, "port 22");
-	fm3 = new FilterMember("DNS ", dev, "port 53");
+//	main = new WlanFilterMember("beacon", dev, "type mgt subtype beacon");
+	fm1 = new WlanFilterMember("12:e3:c7:07:3b:01", dev, "ether src 12:e3:c7:07:3b:01");
+	fm2 = new WlanFilterMember("SSH ", dev, "port 22");
+	fm3 = new WlanFilterMember("DNS ", dev, "port 53");
 
 	cm->addFilterMember(main);
 	cm->addFilterMember(fm1);
-	/*
 	cm->addFilterMember(fm2);
 	cm->addFilterMember(fm3);
-	*/
 
 
 	printf("DLT: %d\n", WlanUtils::getDLT(dev));
