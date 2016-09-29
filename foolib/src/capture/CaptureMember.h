@@ -24,15 +24,15 @@ public:
 	void addFilterMember(IFilterMember *fm);
 	bool capture();
 	virtual ~CaptureMember();
-	const char* toString();
+	const char *getName() { return m_name; }
+
+protected:
+	vector<IFilterMember*> m_filterMembers;
+	char *m_name;
 
 private:
 	int getFilterMemberMaxFD();
 	bool initialize();
-
-private:
-	vector<IFilterMember*> m_filterMembers;
-	char *m_name;
 };
 
 } /* namespace kinow */

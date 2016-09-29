@@ -65,11 +65,13 @@ int IFilterMember::createFilterSocket() {
 	int sockopt = 1;
 	struct sock_filter_st *sf = NULL;
 
+	// RAW socket and ALL ethernet
 	sock = WlanUtils::createSocket(SOCK_RAW, ETH_P_ALL);
 	if (sock == -1) {
 		failure("FilterMember[%s]: Failed to sock(): %s", m_name, strerror(errno));
 		goto out;
 	}
+	// BFP filter format
 	if (m_filterExpression) {
 		sf = WlanUtils::socketFilterFactory(m_ifname, m_filterExpression);
 		if (sf == NULL) {
@@ -92,6 +94,7 @@ int IFilterMember::createFilterSocket() {
 		goto out;
 	}
 
+	// bind socket to NIC
 	if (m_ifname) {
 		if (!WlanUtils::setPromiscMode(sock, m_ifname)) {
 			failure("FilterMember[%s]: Failed to set promisc mode: %s", m_name, strerror(errno));
@@ -103,7 +106,7 @@ int IFilterMember::createFilterSocket() {
 			goto out;
 		}
 
-		if (!WlanUtils::setSockBind(sock, ETH_P_ALL, m_ifname, &m_sockaddr_ll)) {
+		if (!WlanUtils::setSockBind(sock, ETH_P_ALL, m_ifname)) {
 			failure("FilterMember[%s]: Failed to bind(): %s", m_name, strerror(errno));
 			goto out;
 		}
@@ -124,7 +127,8 @@ out:
 
 const char* IFilterMember::toString() {
 	if (!m_desc[0]) {
-		snprintf(m_desc, sizeof(m_desc), "FilterMember[name=%s, sock=%d, filter=%s, ifname=%s]",
+		snprintf(m_desc, sizeof(m_desc),
+				"FilterMember[name=%s, sock=%d, filter=%s, ifname=%s]",
 				m_name, m_sock, m_filterExpression, m_ifname);
 	}
 	return m_desc;

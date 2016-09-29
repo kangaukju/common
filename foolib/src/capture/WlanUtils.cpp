@@ -250,7 +250,7 @@ bool WlanUtils::setPromiscMode(int sock, const char* ifname) {
 	return true;
 }
 
-bool WlanUtils::setSockBind(int sock, int proto, const char *ifname, struct sockaddr_ll *rsll) {
+bool WlanUtils::setSockBind(int sock, int proto, const char *ifname) {
 	struct ifreq ifr;
 	struct sockaddr_ll sll;
 
@@ -273,8 +273,6 @@ bool WlanUtils::setSockBind(int sock, int proto, const char *ifname, struct sock
     if(bind(sock, (struct sockaddr*)&sll, sizeof(sll)) == -1) {
         return false;
     }
-
-    memcpy(rsll, &sll, sizeof(struct sockaddr_ll));
 
     return true;
 }
@@ -398,5 +396,78 @@ void WlanUtils::debugHexPacket(const char* title, uint8_t *buf, int len) {
 	}
 	printf("\n");
 }
+
+bool WlanUtils::getMacAddress(const char *ifname, uint8_t *mac)
+{
+	int i;
+	struct ifreq ifr;
+	uint8_t mymac[6] = { 0, };
+	int sock;
+
+	sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+	if (sock < 0) {
+		return false;
+	}
+
+	memset(&ifr, 0, sizeof(ifr));
+	snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifname);
+	if (ioctl(sock, SIOCGIFHWADDR, &ifr)) {
+		close(sock);
+		return false;
+	}
+	for (i = 0; i < 6; ++i) {
+		mymac[i] = ifr.ifr_addr.sa_data[i];
+	}
+	close(sock);
+
+	memcpy(mac, mymac, sizeof(mymac));
+	return true;
+}
+
+bool WlanUtils::getIpAddress(const char *ifname, uint32_t *ipaddress) {
+	int sock;
+	struct ifreq ifr;
+
+	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sock < 0) {
+		return false;
+	}
+
+	memset(&ifr, 0, sizeof(ifr));
+	snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifname);
+	if (ioctl(sock, SIOCGIFADDR, &ifr)) {
+		*ipaddress = 0;
+		close(sock);
+		return false;
+	}
+	close(sock);
+
+	*ipaddress = ((struct sockaddr_in *) (&(ifr.ifr_addr)))->sin_addr.s_addr;
+	return true;
+}
+
+bool WlanUtils::getNetmask(const char *ifname, uint32_t *netmask) {
+	int sock;
+	struct ifreq ifr;
+
+	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sock < 0) {
+		return false;
+	}
+
+	memset(&ifr, 0, sizeof(ifr));
+	snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifname);
+	if (ioctl(sock, SIOCGIFNETMASK, &ifr)) {
+		*netmask = 0;
+		close(sock);
+		return false;
+	}
+	close(sock);
+
+	*netmask = ((struct sockaddr_in *) (&(ifr.ifr_addr)))->sin_addr.s_addr;
+	return true;
+}
+
+
 
 } /* namespace kinow */

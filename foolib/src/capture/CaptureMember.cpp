@@ -87,8 +87,8 @@ bool CaptureMember::CaptureMember::capture() {
 	int bytes;
 	static int mtu = 1500;
 	u_char buf[1500];
-	struct sockaddr_ll sockaddr;
-	int sockaddrSize;
+	struct sockaddr sockaddr;
+	int sockaddrSize = sizeof(sockaddr);
 
 	epollFd = epoll_create(1);
 	if (epollFd == -1) {
@@ -135,10 +135,8 @@ bool CaptureMember::CaptureMember::capture() {
 				fm = fmArray[recvFd];
 //				printf("CaptureMember[%s]: raise event %s\n", m_name, fm->getName());
 
-//				bytes = recv(recvFd, buf, sizeof(buf), 0);
-				sockaddr = fm->getSockaddr_ll();
-				sockaddrSize = sizeof(sockaddr);
-				bytes = recvfrom(recvFd, buf, sizeof(buf), 0, (struct sockaddr*)&sockaddr, (socklen_t*)&sockaddrSize);
+				bytes = recvfrom(recvFd, buf, sizeof(buf), 0,
+						(struct sockaddr*)&sockaddr, (socklen_t*)&sockaddrSize);
 				fm->filterHandler(buf, bytes);
 			}
 		}
@@ -166,6 +164,7 @@ int CaptureMember::getFilterMemberMaxFD() {
 
 } /* namespace kinow */
 
+#ifdef CAP_TEST
 using namespace kinow;
 
 int main(int argc, char** argv) {
@@ -196,5 +195,5 @@ int main(int argc, char** argv) {
 	printf("DLT: %d\n", WlanUtils::getDLT(dev));
 
 	cm->capture();
-
 }
+#endif

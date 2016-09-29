@@ -28,7 +28,6 @@ public:
 	const char* getFilterExpression() { return m_filterExpression; }
 	const char* getIfname() { return m_ifname; }
 	const char* getName() { return m_name; }
-	struct sockaddr_ll getSockaddr_ll() { return m_sockaddr_ll; }
 	const char* toString();
 	bool initialize();
 
@@ -44,7 +43,6 @@ private:
 	char *m_filterExpression;
 	int m_sock;
 	char m_desc[128];
-	struct sockaddr_ll m_sockaddr_ll;
 };
 
 } /* namespace kinow */

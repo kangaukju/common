@@ -12,8 +12,13 @@
 #include <string.h>
 #include <linux/if_packet.h>    /* struct sockaddr_ll */
 #include <linux/filter.h>
+#include <stdint.h>
 
 namespace kinow {
+
+#ifndef MAC_BCAST_ADDR
+ #define MAC_BCAST_ADDR ((uint8_t *)"\xff\xff\xff\xff\xff\xff")
+#endif
 
 #ifndef _MAC_FMT_
  #define _MAC_FMT_ "%02x:%02x:%02x:%02x:%02x:%02x"
@@ -75,6 +80,14 @@ namespace kinow {
 		((uint8_t*)(x))[5]) == 0)
 #endif
 
+#ifndef _IS_ZERO_IP_
+ #define _IS_ZERO_IP_(x) (( \
+		((uint8_t*)(x))[0] | \
+		((uint8_t*)(x))[1] | \
+		((uint8_t*)(x))[2] | \
+		((uint8_t*)(x))[3]) == 0)
+#endif
+
 #ifndef _IS_BCAST_MAC_
  #define _IS_BCAST_MAC_(x) (( \
 		((uint8_t*)(x))[0] & \
@@ -85,11 +98,38 @@ namespace kinow {
 		((uint8_t*)(x))[5]) == 0xFF)
 #endif
 
-#define _MAC_COPY_(t, s) \
-    memcpy((t), (s), 6)
+#ifndef _IS_BCAST_IP_
+ #define _IS_BCAST_IP_(x) (( \
+		((uint8_t*)(x))[0] & \
+		((uint8_t*)(x))[1] & \
+		((uint8_t*)(x))[2] & \
+		((uint8_t*)(x))[3]) == 0xFF)
+#endif
 
-#define _MAC_CMP_(t, s) \
+#ifndef _MAC_COPY_
+ #define _MAC_COPY_(t, s) \
+    memcpy((t), (s), 6)
+#endif
+
+#ifndef _MAC_CMP_
+ #define _MAC_CMP_(t, s) \
     ((memcmp((t), (s), 6) == 0) ? 1 : 0)
+#endif
+
+#ifndef _IP_FMT_
+ #define _IP_FMT_ "%d.%d.%d.%d"
+#endif
+
+#ifndef _IP_FMT_FILL_
+ #define _IP_FMT_FILL_(x) \
+	((uint8_t*)(&(x)))[0], ((uint8_t*)(&(x)))[1], ((uint8_t*)(&(x)))[2], ((uint8_t*)(&(x)))[3]
+#endif
+
+#ifndef IS_MCAST_IP
+ #define IS_MCAST_IP(x) \
+	((((uint8_t*)(&(x)))[0] >> 4) == 0x0E)
+#endif
+
 
 enum wifi_dlt {
 	DLT_UNKOWN              = 0,
@@ -117,7 +157,7 @@ public:
 	static int createSocket(int type, int proto);
 	static bool setSockOptAddressReuse(int sock);
 	static bool setSockOptBindDevice(int sock, const char *ifname);
-	static bool setSockBind(int sock, int proto, const char *ifname, struct sockaddr_ll *rsll);
+	static bool setSockBind(int sock, int proto, const char *ifname);
 	static bool setSockAttachFilter(int sock, struct sock_fprog *bpf);
 	static bool setPromiscMode(int sock, const char* ifname);
 	static bool setSockOptBroadcat(int sock);
@@ -125,6 +165,9 @@ public:
 	static void socketFilterFree(struct sock_filter_st *sf);
 	static struct sock_filter_st* socketFilterFactory(const char *ifname, const char *filterExpression);
 	static void socketFilterDebug(struct sock_filter_st* sf);
+	static bool getMacAddress(const char *ifname, uint8_t *mac);
+	static bool getIpAddress(const char *ifname, uint32_t *ipaddress);
+	static bool getNetmask(const char *ifname, uint32_t *netmask);
 };
 
 } /* namespace kinow */
