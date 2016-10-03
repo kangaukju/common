@@ -18,15 +18,16 @@ using namespace std;
 
 class Options {
 public:
-	static const int OPT_DEFAULT          = 0x00;
-	static const int OPT_REQUIRE          = 0x01;
-	static const int OPT_REQUIRE_VALUE    = 0x02;
+	static const int REQUIRE_DEFAULT      = 0x01;
+	static const int REQUIRE_OPT          = 0x02;
+	static const int REQUIRE_OPT_VALUE    = 0x04;
 
 
 public:
 	Options(int argc, char** argv) : m_argc(argc), m_argv(argv) {}
 	virtual ~Options();
-	bool addOption(char code, const char* desc, int require = OPT_DEFAULT, const char* defValue = NULL);
+	void addOptionHelp();
+	bool addOption(char code, const char* desc, int require = REQUIRE_DEFAULT, const char* defValue = NULL);
 	bool validOptions(char *errbuf = NULL, size_t errbuflen = 0);
 	bool isRequire(char code);
 	bool isRequireValue(char code);
@@ -38,7 +39,7 @@ public:
 private:
 	class Option {
 	public:
-		Option(char code, int require, const char *desc);
+		Option(char code, int require = REQUIRE_DEFAULT, const char *desc = NULL);
 		~Option();
 		int require();
 		char code();

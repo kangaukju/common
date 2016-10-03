@@ -24,6 +24,7 @@
 
 #include "WlanUtils.h"
 #include "CaptureARP.h"
+#include "Options.h"
 
 namespace kinow {
 
@@ -44,68 +45,41 @@ void help()
 
 
 int main(int argc, char **argv) {
+	Options options(argc, argv);
+	char errbuf[64];
 	uint8_t mymac[6];
 	uint32_t myip;
 	struct in_addr addr;
-	int opt;
-	char optMode;
-	char *optIfname = NULL;
+	const char *mode = NULL;
+	const char *ifname = NULL;
 
-	while ((opt = getopt(argc, argv, "hsri:")) != -1) {
-		switch (opt) {
-		case 's':
-			optMode = opt;
-			break;
-		case 'r':
-			optMode = opt;
-			break;
-		case 'i':
-			optIfname = strdup(optarg);
-			break;
-		case 'h':
-			help();
-			break;
-		default:
-			help();
-			break;
-		}
-	}
+	options.addOption('m', "mode[s: send, r: recv]", Options::REQUIRE_OPT|Options::REQUIRE_OPT_VALUE);
+	options.addOption('i', "interface", Options::REQUIRE_OPT|Options::REQUIRE_OPT_VALUE);
+	options.addOptionHelp();
 
-	if (optIfname == NULL) {
-		help();
+	if (options.validOptions(errbuf, sizeof(errbuf)) == false) {
+		fprintf(stderr, "%s\n", errbuf);
 		exit(1);
 	}
 
-	switch (optMode) {
-		case 's':
-		{
-			WlanUtils::getIpAddress(optIfname, &myip);
-			WlanUtils::getMacAddress(optIfname, mymac);
-			inet_aton("10.10.200.187", &addr);
-			uint32_t announce_ip = addr.s_addr;
-			printf("announce_ip=%u\n", announce_ip);
-			uint8_t announce_mac[] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
-			ARPFilterMember::sendAnnounceARP(optIfname,
-					announce_ip, announce_mac,
-					myip, mymac);
-		}
-		break;
-
-		case 'r':
-		{
-			CaptureMember *capture = new CaptureARP("ARP CAPTURE");
-			IFilterMember *arpFilterMember = new ARPFilterMember("ARP", optIfname, "arp");
-			capture->addFilterMember(arpFilterMember);
-			capture->capture();
-
-			delete capture;
-		}
-		break;
-
-		default:
-			help();
-			break;
+	ifname = options.optionValue('i');
+	mode = options.optionValue('m');
+	if (mode[0] == 's') {
+		WlanUtils::getIpAddress(ifname, &myip);
+		WlanUtils::getMacAddress(ifname, mymac);
+		inet_aton("10.10.200.187", &addr);
+		uint32_t announce_ip = addr.s_addr;
+		printf("announce_ip=%u\n", announce_ip);
+		uint8_t announce_mac[] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66};
+		ARPFilterMember::sendAnnounceARP(ifname,
+				announce_ip, announce_mac,
+				myip, mymac);
+	} else
+	if (mode[0] == 'r') {
+		CaptureMember *capture = new CaptureARP("ARP CAPTURE");
+		IFilterMember *arpFilterMember = new ARPFilterMember("ARP", ifname, "arp");
+		capture->addFilterMember(arpFilterMember);
+		capture->capture();
+		delete capture;
 	}
-
-	free(optIfname);
 }

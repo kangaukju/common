@@ -63,16 +63,16 @@ string Options::Option::toString() {
 
 	len += snprintf(buf, sizeof(buf), "-%c:\t", m_code);
 
-	if (m_require & OPT_REQUIRE_VALUE) {
+	if (m_require & REQUIRE_OPT_VALUE) {
 		len += snprintf(buf + len, sizeof(buf) - len, " value: '%s'", m_value);
 	}
 	if (m_desc) {
 		len += snprintf(buf + len, sizeof(buf) - len, " description: '%s'", m_desc);
 	}
-	if (m_require & OPT_REQUIRE) {
+	if (m_require & REQUIRE_OPT) {
 		len += snprintf(buf + len, sizeof(buf) - len, " [require]");
 	}
-	if (m_require & OPT_REQUIRE_VALUE) {
+	if (m_require & REQUIRE_OPT_VALUE) {
 		len += snprintf(buf + len, sizeof(buf) - len, " [require value]");
 	}
 	return buf;
@@ -102,6 +102,15 @@ bool Options::addOption(char code, const char* desc, int require, const char* de
 	return true;
 }
 
+void Options::addOptionHelp() {
+	static char code = '?';
+	if (m_optionMap[code] != NULL) {
+		free(m_optionMap[code]);
+		m_optionMap[code] = NULL;
+	}
+	m_optionMap[code] = new Option(code, REQUIRE_DEFAULT, "help");
+}
+
 bool Options::validOptions(char *errbuf, size_t errbuflen) {
 	int opt;
 	Option *option = NULL;
@@ -113,8 +122,14 @@ bool Options::validOptions(char *errbuf, size_t errbuflen) {
 		if (option == NULL) {
 //			snprintf(errbuf, errbuflen, "'-%c' is invalid argument", opt);
 			return false;
-		} else {
-			if (option->require() & OPT_REQUIRE_VALUE) {
+		}
+		// case help
+		else if (option->code() == '?') {
+			help();
+			exit(0);
+		}
+		else {
+			if (option->require() & REQUIRE_OPT_VALUE) {
 				option->value(optarg);
 			}
 			option->check(true);
@@ -124,7 +139,7 @@ bool Options::validOptions(char *errbuf, size_t errbuflen) {
 	for (it = m_optionMap.begin(); it != m_optionMap.end(); it++) {
 		option = it->second;
 		// Argument is required, but not checked
-		if (option->require() & OPT_REQUIRE) {
+		if (option->require() & REQUIRE_OPT) {
 			if (option->checked() == false) {
 				if (errbuf && errbuflen > 0) {
 					snprintf(errbuf, errbuflen,
@@ -135,7 +150,7 @@ bool Options::validOptions(char *errbuf, size_t errbuflen) {
 		}
 
 		if (option->checked()) {
-			if ((option->require() & OPT_REQUIRE_VALUE)
+			if ((option->require() & REQUIRE_OPT_VALUE)
 					&& ((option->value() == NULL) || (option->value()[0] == '\0')))
 			{
 				if (errbuf && errbuflen > 0) {
@@ -152,7 +167,7 @@ bool Options::validOptions(char *errbuf, size_t errbuflen) {
 bool Options::isRequire(char code) {
 	Option *option = m_optionMap[code];
 	if (option) {
-		return (option->require() & OPT_REQUIRE);
+		return (option->require() & REQUIRE_OPT);
 	}
 	return false;
 }
@@ -160,7 +175,7 @@ bool Options::isRequire(char code) {
 bool Options::isRequireValue(char code) {
 	Option *option = m_optionMap[code];
 	if (option) {
-		return (option->require() & OPT_REQUIRE_VALUE);
+		return (option->require() & REQUIRE_OPT_VALUE);
 	}
 	return false;
 }
@@ -170,7 +185,7 @@ const char* Options::optionValue(char code) {
 	if (option == NULL) {
 		return NULL;
 	}
-	if (option->require() & OPT_REQUIRE_VALUE) {
+	if (option->require() & REQUIRE_OPT_VALUE) {
 		return option->value();
 	}
 	return NULL;
@@ -196,16 +211,21 @@ void Options::usage() {
 
 	for (it = m_optionMap.begin(); it != m_optionMap.end(); it++) {
 		option = it->second;
-		if (option->require() & OPT_REQUIRE) {
+		if (option->require() & REQUIRE_OPT) {
 			if (opt_str.c_str()[0]) opt_str.append(", ");
-			opt_str.append("require");
+			opt_str.append("require option");
 		}
-		if (option->require() & OPT_REQUIRE_VALUE) {
+		if (option->require() & REQUIRE_OPT_VALUE) {
 			if (opt_str.c_str()[0]) opt_str.append(", ");
-			opt_str.append("require value");
+			opt_str.append("require option's value");
 		}
-		printf(" -%c          %s [%s]\n",
-				it->first, option->desc(), opt_str.c_str());
+		if (opt_str.c_str()[0]) {
+			printf(" -%c          %s [%s]\n",
+					it->first, option->desc() ? option->desc() : "", opt_str.c_str());
+		} else {
+			printf(" -%c          %s\n",
+					it->first, option->desc() ? option->desc() : "");
+		}
 		opt_str.clear();
 	}
 }
@@ -227,10 +247,10 @@ string Options::getOptionsString() {
 			require = option->require();
 			codeStr[0] = option->code();
 
-			if (require & OPT_REQUIRE_VALUE) {
+			if (require & REQUIRE_OPT_VALUE) {
 				options.append(codeStr);
 				options.append(":");
-			} else if ((require & OPT_DEFAULT) || (require & OPT_REQUIRE)) {
+			} else if ((require & REQUIRE_DEFAULT) || (require & REQUIRE_OPT)) {
 				options.append(codeStr);
 			}
 		}
@@ -240,6 +260,7 @@ string Options::getOptionsString() {
 
 } /* namespace kinow */
 
+#if 0
 using namespace kinow;
 
 int main(int argc ,char **argv) {
@@ -247,9 +268,10 @@ int main(int argc ,char **argv) {
 	char errbuf[64];
 	bool valid = false;
 
-	options.addOption('c', "conf file", Options::OPT_REQUIRE_VALUE, "test.conf");
+	options.addOption('c', "conf file", Options::REQUIRE_OPT_VALUE, "test.conf");
 	options.addOption('d', "daemonize");
-	options.addOption('i', "interface", Options::OPT_REQUIRE | Options::OPT_REQUIRE_VALUE);
+	options.addOption('i', "interface", Options::REQUIRE_OPT|Options::REQUIRE_OPT_VALUE);
+	options.addOptionHelp();
 
 	valid = options.validOptions(errbuf, sizeof(errbuf));
 	printf("check valid options = %s\n", valid ? "GOOD" : "BAD");
@@ -257,12 +279,15 @@ int main(int argc ,char **argv) {
 		printf("%s\n", errbuf);
 	}
 
+	/*
 	options.showOptions();
 
 	printf("c = %s\n", options.optionValue('c'));
 	printf("i = %s\n", options.optionValue('i'));
 
 	options.help();
+	*/
 
 	return 0;
 }
+#endif
