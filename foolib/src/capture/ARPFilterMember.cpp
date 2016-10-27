@@ -125,19 +125,19 @@ bool ARPFilterMember::sendAnnounceARP(
 
 	sock = WlanUtils::createSocket(SOCK_RAW, ETH_P_ALL);
 	if (sock == -1) {
-		fprintf(stderr, "CaptureARP: sendAnnounceARP Failed to create socket - %s\n", strerror(errno));
+		fprintf(stderr, "ARPFilterMember: sendAnnounceARP Failed to create socket - %s\n", strerror(errno));
 		goto END_SEND;
 	}
 	if (WlanUtils::setSockOptBroadcat(sock) == false) {
-		fprintf(stderr, "CaptureARP: sendAnnounceARP Failed to setsockopt SO_BROADCAST - %s\n", strerror(errno));
+		fprintf(stderr, "ARPFilterMember: sendAnnounceARP Failed to setsockopt SO_BROADCAST - %s\n", strerror(errno));
 		goto END_SEND;
 	}
 	if (WlanUtils::setSockOptBindDevice(sock, ifname) == false) {
-		fprintf(stderr, "CaptureARP: sendAnnounceARP Failed to bind device - %s\n", strerror(errno));
+		fprintf(stderr, "ARPFilterMember: sendAnnounceARP Failed to bind device - %s\n", strerror(errno));
 		goto END_SEND;
 	}
 	if (!WlanUtils::setSockBind(sock, ETH_P_ALL, ifname)) {
-		fprintf(stderr, "CaptureARP: sendAnnounceARP Failed to bind(): %s\n", strerror(errno));
+		fprintf(stderr, "ARPFilterMember: sendAnnounceARP Failed to bind(): %s\n", strerror(errno));
 		goto END_SEND;
 	}
 
@@ -176,5 +176,70 @@ END_SEND:
 	return ok;
 }
 
+
+bool ARPFilterMember::sendARPRequest(
+		const char *ifname,
+		uint32_t sender_ipaddr, uint8_t *sender_macaddr,
+		uint32_t target_ipaddr, uint8_t *target_macaddr)
+{
+	uint8_t arp_msg[sizeof(struct arp_message)]; // ARP buffer
+	struct arp_message *p_arp = NULL;
+	int sock = -1;
+	bool ok = false;
+
+	sock = WlanUtils::createSocket(SOCK_RAW, ETH_P_ALL);
+	if (sock == -1) {
+		fprintf(stderr, "ARPFilterMember: sendARPRequest Failed to create socket - %s\n", strerror(errno));
+		goto END_SEND;
+	}
+	if (WlanUtils::setSockOptBroadcat(sock) == false) {
+		fprintf(stderr, "ARPFilterMember: sendARPRequest Failed to setsockopt SO_BROADCAST - %s\n", strerror(errno));
+		goto END_SEND;
+	}
+	if (WlanUtils::setSockOptBindDevice(sock, ifname) == false) {
+		fprintf(stderr, "ARPFilterMember: sendARPRequest Failed to bind device - %s\n", strerror(errno));
+		goto END_SEND;
+	}
+	if (!WlanUtils::setSockBind(sock, ETH_P_ALL, ifname)) {
+		fprintf(stderr, "ARPFilterMember: sendARPRequest Failed to bind(): %s\n", strerror(errno));
+		goto END_SEND;
+	}
+
+	p_arp = (struct arp_message *) &arp_msg;
+	memset(p_arp, 0, sizeof(arp_msg));
+	_MAC_COPY_(p_arp->ethhdr.h_dest, MAC_BCAST_ADDR); /* MAC DA */
+	_MAC_COPY_(p_arp->ethhdr.h_source, sender_macaddr);/* MAC SA */
+	p_arp->ethhdr.h_proto = htons(ETH_P_ARP);         /* protocol type (Ethernet) */
+	p_arp->htype = htons(ARPHRD_ETHER);               /* hardware type */
+	p_arp->ptype = htons(ETH_P_IP);                   /* protocol type (ARP message) */
+	p_arp->hlen = 6;                                  /* hardware address length */
+	p_arp->plen = 4;                                  /* protocol address length */
+	p_arp->operation = htons(ARPOP_REQUEST);          /* ARP op code */
+	*((uint32_t *) p_arp->sInaddr) = sender_ipaddr;   /* source IP address */
+	*((uint32_t *) p_arp->tInaddr) = target_ipaddr;   /* target IP address */
+	_MAC_COPY_(p_arp->sHaddr, sender_macaddr);        /* source hardware address */
+	_MAC_COPY_(p_arp->tHaddr, target_macaddr);        /* target hardware address */
+
+	// shoot ARP
+	if (send(sock, &arp_msg, sizeof(arp_msg), 0) <= 0) {
+
+	} else {
+
+	}
+
+END_SEND:
+	if (sock != -1)
+		close(sock);
+	return ok;
+}
+
+void showARPPacket(const char *title, struct arp_message *arp) {
+	fprintf(stdout, "%s [ARP] [%s] \n", title,
+			(arp->operation == htons(ARPOP_REQUEST)) ? "request" : "reply  ");
+	fprintf(stdout, "sender "_IP_FMT_", "_MAC_FMT_"\n",
+			_IP_FMT_FILL_(arp->sInaddr), _MAC_FMT_FILL_(arp->sHaddr));
+	fprintf(stdout, "target "_IP_FMT_", "_MAC_FMT_"\n",
+			_IP_FMT_FILL_(arp->tInaddr), _MAC_FMT_FILL_(arp->tHaddr));
+}
 
 } /* namespace kinow */

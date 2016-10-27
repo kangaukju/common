@@ -164,6 +164,14 @@ bool Options::validOptions(char *errbuf, size_t errbuflen) {
 	return true;
 }
 
+bool Options::isOption(char code) {
+	Option *option = m_optionMap[code];
+	if (option == NULL) {
+		return false;
+	}
+	return option->checked();
+}
+
 bool Options::isRequire(char code) {
 	Option *option = m_optionMap[code];
 	if (option) {

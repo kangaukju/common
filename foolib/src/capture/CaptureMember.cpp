@@ -6,7 +6,6 @@
  */
 
 #include <sys/socket.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <netinet/in.h>
 #include <linux/if_packet.h>
@@ -19,6 +18,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/epoll.h>
+#include <stdlib.h>
 
 #include "WlanFilterMember.h"
 #include "CaptureMember.h"

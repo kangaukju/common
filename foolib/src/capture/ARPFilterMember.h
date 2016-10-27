@@ -123,9 +123,14 @@ public:
 	void filterHandler(uint8_t* buf, size_t len);
 
 	/**
+	 * @brief: for debug. show arp information
+	 */
+	static void showArpinfo(struct arpinfo *arp);
+
+	/**
 	 * @brief: for debug. show arp packet
 	 */
-	void showArpinfo(struct arpinfo *arp);
+	static void showARPPacket(struct arp_message *arp);
 
 	/**
 	 * @brief: for debug. show announce data
@@ -175,6 +180,11 @@ public:
 			const char *ifname,
 			uint32_t announce_ipaddr, uint8_t *announce_macaddr,
 			uint32_t sendder_ipaddr, uint8_t *sender_macaddr);
+
+	static bool sendARPRequest(
+			const char *ifname,
+		uint32_t sender_ipaddr, uint8_t *sender_macaddr,
+		uint32_t target_ipaddr, uint8_t *target_macaddr);
 };
 
 } /* namespace kinow */

@@ -35,6 +35,7 @@ public:
 	void showOptions(const char* title = NULL);
 	void usage();
 	void help();
+	bool isOption(char code);
 
 private:
 	class Option {
